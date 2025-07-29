@@ -1,6 +1,7 @@
 
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Sheet,
   SheetContent,
@@ -56,10 +57,11 @@ export function Sidebar({
   isOpen, 
   onOpenChange,
 }: SidebarProps) {
+  const router = useRouter();
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [chatTarget, setChatTarget] = useState<'admin' | 'owner' | null>(null);
   const { toast } = useToast();
-  const [currentUser, setCurrentUser] = useState({ name: 'Ishaan', avatar: 'https://placehold.co/100x100.png', avatarFallback: 'I' });
+  const [currentUser, setCurrentUser] = useState({ name: 'User', email: 'user@example.com', avatar: 'https://placehold.co/100x100.png', avatarFallback: 'U' });
   const [tempUsername, setTempUsername] = useState(currentUser.name);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
@@ -70,6 +72,19 @@ export function Sidebar({
       howToPlay: '1. Select your bet amount.\\n2. Choose the game difficulty.\\n3. Click "Play" to start the game.\\n4. Watch the multiplier increase.\\n5. Click "Cash Out" before the game crashes to win.',
       supportInfo: 'For any support queries, please contact us at support@example.com or join our Telegram channel.',
   });
+
+  useEffect(() => {
+    const user = localStorage.getItem('currentUser');
+    if (user) {
+        const parsedUser = JSON.parse(user);
+        setCurrentUser({
+            name: parsedUser.name || 'User',
+            email: parsedUser.email,
+            avatar: parsedUser.avatar || 'https://placehold.co/100x100.png',
+            avatarFallback: (parsedUser.name || 'U').charAt(0).toUpperCase(),
+        });
+    }
+  }, [isOpen]);
 
   const updateContent = () => {
      const savedSettings = localStorage.getItem('adminSettings');
@@ -89,6 +104,13 @@ export function Sidebar({
       window.addEventListener('storage', updateContent);
       return () => window.removeEventListener('storage', updateContent);
   }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('walletBalance');
+    localStorage.removeItem('betAmount');
+    router.push('/auth');
+  }
 
   const menuItems = [
     { icon: Banknote, label: 'Deposit', modal: 'deposit' },
@@ -126,6 +148,9 @@ export function Sidebar({
   }
 
   const handleSaveProfile = () => {
+    const user = JSON.parse(localStorage.getItem('currentUser')!);
+    user.name = tempUsername;
+    localStorage.setItem('currentUser', JSON.stringify(user));
     setCurrentUser(prev => ({...prev, name: tempUsername}));
     toast({title: "Profile Updated!", description: "Your username has been changed."});
     setIsEditingProfile(false);
@@ -136,8 +161,12 @@ export function Sidebar({
       if (file) {
           const reader = new FileReader();
           reader.onloadend = () => {
-              setCurrentUser(prev => ({...prev, avatar: reader.result as string}));
-               toast({title: "Avatar Updated!", description: "Your new avatar has been set."});
+              const newAvatar = reader.result as string;
+              const user = JSON.parse(localStorage.getItem('currentUser')!);
+              user.avatar = newAvatar;
+              localStorage.setItem('currentUser', JSON.stringify(user));
+              setCurrentUser(prev => ({...prev, avatar: newAvatar}));
+              toast({title: "Avatar Updated!", description: "Your new avatar has been set."});
           };
           reader.readAsDataURL(file);
       }
@@ -269,7 +298,7 @@ export function Sidebar({
                 </Avatar>
                 <div>
                   <SheetTitle className="text-xl">{currentUser.name}</SheetTitle>
-                  <SheetDescription>sonickuwal@gmail.com</SheetDescription>
+                  <SheetDescription>{currentUser.email}</SheetDescription>
                    <Button variant="link" className="p-0 h-auto text-accent" onClick={handleProfileClick}>View Profile</Button>
                 </div>
               </div>
@@ -324,7 +353,7 @@ export function Sidebar({
               </nav>
             </div>
             <SheetFooter className="p-6 flex-col !space-x-0 gap-4">
-               <Button variant="destructive" className="w-full h-12 text-base">
+               <Button variant="destructive" className="w-full h-12 text-base" onClick={handleLogout}>
                 <LogOut className="mr-2 h-5 w-5"/>
                 Logout
               </Button>
