@@ -1,6 +1,7 @@
 
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import GameHeader from '@/components/game/GameHeader';
 import GameScene from '@/components/game/GameScene';
 import ControlPanel from '@/components/game/ControlPanel';
@@ -8,10 +9,13 @@ import { Sidebar } from '@/components/game/Sidebar';
 import { useToast } from '@/hooks/use-toast';
 import BottomNavBar from '@/components/game/BottomNavBar';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export type GameState = 'ready' | 'running' | 'finished';
 
 export default function Home() {
+  const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [gameState, setGameState] = useState<GameState>('ready');
   const [betAmount, setBetAmount] = useState<number>(100);
@@ -22,23 +26,33 @@ export default function Home() {
   const isMobile = useIsMobile();
   
   useEffect(() => {
-    const savedBalance = localStorage.getItem('walletBalance');
-    if (savedBalance) {
-      setWalletBalance(JSON.parse(savedBalance));
+    const currentUser = localStorage.getItem('currentUser');
+    if (!currentUser) {
+      router.push('/auth');
+    } else {
+      setIsAuthenticated(true);
+      const savedBalance = localStorage.getItem('walletBalance');
+      if (savedBalance) {
+        setWalletBalance(JSON.parse(savedBalance));
+      }
+      const savedBetAmount = localStorage.getItem('betAmount');
+      if (savedBetAmount) {
+          setBetAmount(JSON.parse(savedBetAmount));
+      }
     }
-    const savedBetAmount = localStorage.getItem('betAmount');
-    if (savedBetAmount) {
-        setBetAmount(JSON.parse(savedBetAmount));
-    }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
-    localStorage.setItem('walletBalance', JSON.stringify(walletBalance));
-  }, [walletBalance]);
+    if (isAuthenticated) {
+        localStorage.setItem('walletBalance', JSON.stringify(walletBalance));
+    }
+  }, [walletBalance, isAuthenticated]);
 
   useEffect(() => {
-    localStorage.setItem('betAmount', JSON.stringify(betAmount));
-  }, [betAmount]);
+    if (isAuthenticated) {
+        localStorage.setItem('betAmount', JSON.stringify(betAmount));
+    }
+  }, [betAmount, isAuthenticated]);
 
 
   const handlePlay = () => {
@@ -84,6 +98,18 @@ export default function Home() {
         description: `You lost your bet of ₹${betAmount}. Better luck next time!`,
       })
     }
+  }
+
+  if (!isAuthenticated) {
+      return (
+        <div className="flex h-screen w-full flex-col items-center justify-center bg-background p-4">
+            <div className="space-y-4 w-full max-w-lg">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-64 w-full" />
+                <Skeleton className="h-32 w-full" />
+            </div>
+        </div>
+      );
   }
 
   return (
